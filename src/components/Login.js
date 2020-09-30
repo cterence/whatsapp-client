@@ -1,23 +1,23 @@
-import React, { useRef } from 'react'
-import { Button, Container, Form } from 'react-bootstrap'
-import { v4 as uuidV4 } from 'uuid'
+import React, { useRef } from "react";
+import { Button, Container, Form } from "react-bootstrap";
+import { v4 as uuidV4 } from "uuid";
 
 const Login = ({ onIdSubmit }) => {
-    const idRef = useRef()
+    const idRef = useRef();
 
     const handleSubmit = (e) => {
-        e.preventDefault()
-        onIdSubmit(idRef.current.value)
-    }
+        e.preventDefault();
+        onIdSubmit(idRef.current.value);
+    };
 
     const createNewId = () => {
-        onIdSubmit(uuidV4())
-    }
+        onIdSubmit(uuidV4());
+    };
 
     return (
         <Container
             className="d-flex align-items-center"
-            style={{ height: '100vh' }}
+            style={{ height: "100vh" }}
         >
             <Form className="w-100" onSubmit={handleSubmit}>
                 <Form.Group>
@@ -32,7 +32,7 @@ const Login = ({ onIdSubmit }) => {
                 </Button>
             </Form>
         </Container>
-    )
-}
+    );
+};
 
-export default Login
+export default Login;
