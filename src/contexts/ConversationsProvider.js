@@ -1,6 +1,7 @@
-import React, { useContext, useState } from "react";
+import React, { useContext, useState, useEffect, useCallback } from "react";
 import useLocalStorage from "../hooks/useLocalStorage";
 import { useContacts } from "./ContactsProvider";
+import { useSocket } from "./SocketProvider";
 
 const ConversationsContext = React.createContext();
 
@@ -13,63 +14,84 @@ export function ConversationsProvider({ id, children }) {
         "conversations",
         []
     );
-    const { contacts } = useContacts();
     const [selectedConversationIndex, setSelectedConversationIndex] = useState(
         0
     );
+    const { contacts } = useContacts();
+    const socket = useSocket();
 
-    const createConversation = (recipients, messages) => {
+    function createConversation(recipients) {
         setConversations((prevConversations) => {
             return [...prevConversations, { recipients, messages: [] }];
         });
-    };
+    }
 
-    const addMessageToConversation = ({ recipients, text, sender }) => {
-        setConversations((prevConversations) => {
-            let madeChange = false;
-            const newMessage = { sender, text };
-            const newConversations = prevConversations.map((conversation) => {
-                if (arrayEquality(conversation.recipients, recipients)) {
-                    madeChange = true;
-                    return {
-                        ...conversation,
-                        messages: [...conversation.messages, newMessage],
-                    };
+    const addMessageToConversation = useCallback(
+        ({ recipients, text, sender }) => {
+            setConversations((prevConversations) => {
+                let madeChange = false;
+                const newMessage = { sender, text };
+                const newConversations = prevConversations.map(
+                    (conversation) => {
+                        if (
+                            arrayEquality(conversation.recipients, recipients)
+                        ) {
+                            madeChange = true;
+                            return {
+                                ...conversation,
+                                messages: [
+                                    ...conversation.messages,
+                                    newMessage,
+                                ],
+                            };
+                        }
+
+                        return conversation;
+                    }
+                );
+
+                if (madeChange) {
+                    return newConversations;
+                } else {
+                    return [
+                        ...prevConversations,
+                        { recipients, messages: [newMessage] },
+                    ];
                 }
-                return conversation;
             });
+        },
+        [setConversations]
+    );
 
-            if (madeChange) {
-                return newConversations;
-            } else {
-                return [
-                    ...prevConversations,
-                    { recipients, messages: [newMessage] },
-                ];
-            }
-        });
-    };
+    useEffect(() => {
+        if (socket == null) return;
 
-    const sendMessage = (recipients, text) => {
+        socket.on("receive-message", addMessageToConversation);
+
+        return () => socket.off("receive-message");
+    }, [socket, addMessageToConversation]);
+
+    function sendMessage(recipients, text) {
+        socket.emit("send-message", { recipients, text });
+
         addMessageToConversation({ recipients, text, sender: id });
-    };
+    }
 
     const formattedConversations = conversations.map((conversation, index) => {
         const recipients = conversation.recipients.map((recipient) => {
-            const contact = contacts.find(
-                (contact) => contact.id === recipient
-            );
+            const contact = contacts.find((contact) => {
+                return contact.id === recipient;
+            });
             const name = (contact && contact.name) || recipient;
             return { id: recipient, name };
         });
 
         const messages = conversation.messages.map((message) => {
-            const contact = contacts.find(
-                (contact) => contact.id === message.sender
-            );
+            const contact = contacts.find((contact) => {
+                return contact.id === message.sender;
+            });
             const name = (contact && contact.name) || message.sender;
             const fromMe = id === message.sender;
-
             return { ...message, senderName: name, fromMe };
         });
 
@@ -80,9 +102,9 @@ export function ConversationsProvider({ id, children }) {
     const value = {
         conversations: formattedConversations,
         selectedConversation: formattedConversations[selectedConversationIndex],
-        createConversation,
         sendMessage,
         selectConversationIndex: setSelectedConversationIndex,
+        createConversation,
     };
 
     return (
@@ -92,10 +114,13 @@ export function ConversationsProvider({ id, children }) {
     );
 }
 
-const arrayEquality = (a, b) => {
+function arrayEquality(a, b) {
     if (a.length !== b.length) return false;
+
     a.sort();
     b.sort();
 
-    return a.every((element, index) => element === b[index]);
-};
+    return a.every((element, index) => {
+        return element === b[index];
+    });
+}

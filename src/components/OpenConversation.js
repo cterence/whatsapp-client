@@ -19,7 +19,7 @@ export default function OpenConversation() {
     };
 
     return (
-        <div class="d-flex flex-column flex-grow-1">
+        <div className="d-flex flex-column flex-grow-1">
             <div className="flex-grow-1 overflow-auto">
                 <div className="d-flex flex-column align-items-start justify-content-end px-3">
                     {selectedConversation.messages.map((message, index) => {
@@ -30,7 +30,9 @@ export default function OpenConversation() {
                                 ref={lastMessage ? setRef : null}
                                 key={index}
                                 className={`my-1 d-flex flex-column ${
-                                    message.fromMe ? "align-self-end" : ""
+                                    message.fromMe
+                                        ? "align-self-end align-items-end"
+                                        : "align-items-start"
                                 }`}
                             >
                                 <div
